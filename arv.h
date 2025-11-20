@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 typedef struct data
 {
@@ -66,7 +67,7 @@ noarv* auxinsere(noarv *no, float valor)
     lerstring(novo->vendas.nomecliente);
     printf("\ndigite o nome do vendedor:\t");
     lerstring(novo->vendas.nomevendedor);
-    gerarIdVendedor(novo->vendas.idvend);
+    gerarIdvendedor(novo->vendas.idvend);
     printf("\ndigite o valor:\t");
     scanf("%f",&valor);
     novo -> vendas.valor = valor;
@@ -119,7 +120,6 @@ void insere(arv *arvore, int num)
 arv* criararvore()
 {
     arv *aux;
-    noarv *aux;
     aux = (arv*)malloc(sizeof(arv));
     aux -> raiz = NULL;
     return aux;
@@ -131,16 +131,6 @@ int arvorevazia(arv *base)
         return 1;
     }
     return 0;
-}
-arv* remover_venda(arv *recebida, int num)
-{
-    if (recebida == NULL || recebida -> raiz == NULL)
-    {
-        return recebida;
-    }
-
-    recebida -> raiz = remover_aux(recebida -> raiz, num);
-    return recebida;
 }
 
 noarv* remover_aux(noarv *pai, int num)
@@ -196,6 +186,69 @@ noarv* remover_aux(noarv *pai, int num)
     return pai;
 }
 
+
+arv* remover_venda(arv *recebida, int num)
+{
+    if (recebida == NULL || recebida -> raiz == NULL)
+    {
+        return recebida;
+    }
+
+    recebida -> raiz = remover_aux(recebida -> raiz, num);
+    return recebida;
+}
+
+
+void buscamatricula_no(noarv *no, char idm[5], int *contador)
+{
+    if (no == NULL)
+        return;
+
+    buscamatricula_no(no->esq, idm, contador);
+
+    if (strcmp(no->vendas.idvend, idm) == 0)
+    {
+        if (*contador == 0)
+        {
+            printf("\nVendedor: %s\n", no->vendas.nomevendedor);
+            printf("Matrícula: %s\n\n", no->vendas.idvend);
+
+            printf("ID  | Cliente                | Data de Transação | Valor(R$)\n");
+        }
+
+        printf("%-3d | %-20s | %02d/%02d/%04d       | %.2f\n",
+               no->vendas.id,
+               no->vendas.nomecliente,
+               no->vendas.transacao.dia,
+               no->vendas.transacao.mes,
+               no->vendas.transacao.ano,
+               no->vendas.valor);
+
+        (*contador)++;
+    }
+
+    buscamatricula_no(no->dir, idm, contador);
+}
+
+
+void buscamatricula(arv* arvore, char idm[5])
+{
+    if (arvore == NULL || arvore->raiz == NULL)
+    {
+        printf("\narvore vazia\n");
+        return NULL;
+    }
+
+    int contador = 0;
+    buscamatricula_no(arvore->raiz, idm, &contador);
+
+    if (contador == 0)
+    {
+        printf("\nnenhuma venda encontrada para a matrícula %s.\n", idm);
+    }
+}
+
+
 void busca(arv* recebida)
 {
     int num;
@@ -203,43 +256,25 @@ void busca(arv* recebida)
     scanf("%d",&num);
     switch(num){
         case 1:
-            buscamatricula(recebida);
+        {
+            char matricula[5];
+            printf("\ndigite o numero da matricula do vendedor:\t");
+            scanf("%4s",matricula);
+            buscamatricula(recebida -> raiz, matricula);
             break;
+        }
         case 2:
-            buscanome(recebida);
+        {
+            char nomevend[50];
+            printf("\ndigite o nome do vendedor:\t");
+            lerstring(nomevend);
+            buscanome(recebida, nomevend);
             break;
+        }
         default:
             return NULL;
     }
 }
-void buscamatricula(arv* pai)
-{
-    char matricula[4];
-    printf("\ndigite o numero da matricula do vendedor:\t");
-    scanf("%c",matricula);
-
-    if(pai->dir!=NULL)
-    {
-        if(matricula != pai -> vendas.idvend)
-        {
-            buscamatricula(pai->dir);
-            else
-            {
-
-            }
-
-        }
-        if(pai->esq!=NULL)
-        {
-            if()
-            buscamatricula(pai->esq);
-        }
-}
-
-
-
-
-
 
 
 
