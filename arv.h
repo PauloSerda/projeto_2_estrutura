@@ -18,7 +18,7 @@ typedef struct v
     char nomecliente[50];
     char nomevendedor[50];
     char idvend[5];
-    data transacao;
+    data data;
     float valor;
 }vend;
 
@@ -45,7 +45,7 @@ int idexistearv(arv *recebida, int id)
     return idexiste(recebida->raiz, id);
 }
 
-int idexiste(int id, noarv* no)
+int idexiste(noarv* no, int id)
 {
     if(no == NULL)
     {
@@ -69,9 +69,16 @@ int idexiste(int id, noarv* no)
 int gerarIdUnico(arv *recebida)
 {
     int id;
+    int cont = 0;
     do
     {
         id = 1000 + rand() %9000;
+        cont ++;
+        if(cont > 9000)
+        {
+            printf("\n\tSistema cheio, nao foi possivel cadastrar a venda");
+            exit(1);
+        }
     }while(idexistearv(recebida, id));
     return id;
 }
@@ -106,40 +113,74 @@ int idvendexiste(noarv *no, char idvend[5])
     return 0;
 }
 
-void gerarIdvendedor(arv *recebida, char idv[5])
-{
-    do
-    {
-        int numgerado = rand() % 900 + 100;
-        char aux[4];
-        idv[0] = 'v';
-        itoa(numgerado, aux, 4);
-        strcat(idv,aux);
-    }while (idvendexistearv(recebida,idv));
-}
-
 void lerstring(char str[50])
 {
     scanf(" %49[^\n]", str);
 }
 
+int buscarIdVendPorNome_no(noarv *no, char nomevend[50], char out_idv[5])
+{
+    if (no == NULL)
+    {
+        return 0;
+    }
+    if (buscarIdVendPorNome_no(no->esq, nomevend, out_idv))
+    {
+        return 1;
+    }
+    if (strcmp(no->vendas.nomevendedor, nomevend) == 0)
+    {
+        strcpy(out_idv, no->vendas.idvend);
+        return 1;
+    }
+    return buscarIdVendPorNome_no(no->dir, nomevend, out_idv);
+}
+
+int buscarIdVendPorNome(arv *arvore, char nomevend[50], char out_idv[5])
+{
+    if (arvore == NULL || arvore->raiz == NULL)
+    {
+        return 0;
+    }
+    return buscarIdVendPorNome_no(arvore->raiz, nomevend, out_idv);
+}
+
+void gerarIdvendedor(arv *recebida, char nomevend[50], char idv[5])
+{
+    if (buscarIdVendPorNome(recebida, nomevend, idv))
+    {
+        return;
+    }
+    do
+    {
+        int numgerado = rand() % 900 + 100;
+
+        idv[0] = 'v';
+        itoa(numgerado, &idv[1], 10);
+
+    } while (idvendexistearv(recebida, idv));
+}
 
 
-noarv* auxinsere(arv *arvore, noarv *no, float valor)
+noarv* auxinsere(arv *arvore, noarv *no)
 {
     int flag = 0;
     noarv *pai;
     noarv *novo;
     novo = (noarv*)malloc(sizeof(noarv));
     novo->vendas.id = gerarIdUnico(arvore);
-    printf("\ndigite o nome do cliente:\t");
+    printf("\n\tdigite o nome do cliente:\t");
     lerstring(novo->vendas.nomecliente);
-    printf("\ndigite o nome do vendedor:\t");
+    printf("\n\tdigite o nome do vendedor:\t");
     lerstring(novo->vendas.nomevendedor);
-    gerarIdvendedor(arvore, novo->vendas.idvend);
-    printf("\ndigite o valor:\t");
-    scanf("%f",&valor);
-    novo -> vendas.valor = valor;
+    gerarIdvendedor(arvore, novo->vendas.nomevendedor, novo->vendas.idvend);
+    printf("\n\tdigite o valor:\t");
+    scanf("%f",&novo -> vendas.valor);
+    printf("\n\tdigite a data da venda (DD MM AAAA:)");
+    scanf("%d %d %d",
+          &novo -> vendas.data.dia,
+          &novo -> vendas.data.mes,
+          &novo -> vendas.data.ano);
     novo -> esq = NULL;
     novo -> dir = NULL;
     if(no == NULL)
@@ -151,7 +192,7 @@ noarv* auxinsere(arv *arvore, noarv *no, float valor)
         pai = no;
         while(flag == 0)
         {
-            if(pai -> vendas.valor < valor)
+            if(pai -> vendas.valor < novo -> vendas.valor)
             {
                 if(pai -> dir == NULL)
                 {
@@ -163,7 +204,7 @@ noarv* auxinsere(arv *arvore, noarv *no, float valor)
                     pai = pai -> dir;
                 }
             }
-            else if(pai -> vendas.valor > valor)
+            else if(pai -> vendas.valor > novo -> vendas.valor)
             {
                 if(pai -> esq == NULL)
                 {
@@ -181,9 +222,9 @@ noarv* auxinsere(arv *arvore, noarv *no, float valor)
 }
 
 
-void insere(arv *arvore, int num)
+void insere(arv *arvore)
 {
-    arvore -> raiz = auxinsere(arvore,arvore -> raiz,num);
+    arvore -> raiz = auxinsere(arvore,arvore -> raiz);
 }
 
 arv* criararvore()
@@ -202,72 +243,71 @@ int arvorevazia(arv *base)
     return 0;
 }
 
-noarv* removerNo(noarv *no, int id, int *removido)
+noarv* removerno(noarv *no, int id, int *removido)
 {
-    if (no == NULL || *removido == 1)
+    if (no == NULL)
     {
-        return no;
+                return NULL;
     }
-    no->esq = removerNo(no->esq, id, removido);
-    if (*removido == 1)
-    {
-        return no;
-    }
-    no->dir = removerNo(no->dir, id, removido);
-    if (*removido == 1)
-    {
-        return no;
-    }
+    no -> esq = removerno(no -> esq, id, removido);
+    no -> dir = removerno(no -> dir, id, removido);
     if (no->vendas.id == id)
     {
         *removido = 1;
-        if (no->esq == NULL && no->dir == NULL)
+
+        if (no -> esq == NULL && no -> dir == NULL)
         {
             free(no);
             return NULL;
         }
-        if (no->esq == NULL)
+
+        if (no -> esq == NULL)
         {
-            noarv *aux = no->dir;
+            noarv *aux = no -> dir;
             free(no);
             return aux;
         }
-        if (no->dir == NULL)
+
+        if (no -> dir == NULL)
         {
-            noarv *aux = no->esq;
+            noarv *aux = no -> esq;
             free(no);
             return aux;
         }
-        noarv *aux = no->esq;
-        while (aux->dir != NULL)
+
+        noarv *aux = no -> esq;
+        while (aux -> dir != NULL)
         {
-            aux = aux->dir;
+            aux = aux -> dir;
         }
-        no->vendas = aux->vendas;
-        no->esq = removerNo(no->esq, aux->vendas.id, removido);
+        no -> vendas = aux -> vendas;
+        no -> esq = removerno(no -> esq, aux -> vendas.id, removido);
 
         return no;
     }
+
     return no;
 }
 
-
-void remover_venda(arv *arvore, int id)
+void removervenda(arv *arvore)
 {
-    if (arvore == NULL || arvore->raiz == NULL)
+    if (arvore == NULL || arvore -> raiz == NULL)
     {
-        printf("\narvore vazia\n");
+        printf("\n\tArvore vazia\n");
         return;
     }
+    int id;
+    printf("\n\tDigite o ID da venda que sera removida:\t");
+    scanf("%d",&id);
     int removido = 0;
-    arvore->raiz = removerNo(arvore->raiz, id, &removido);
+    arvore -> raiz = removerno(arvore -> raiz, id, &removido);
     if (!removido)
     {
-        printf("\nvenda com ID %d nao encontrada.\n", id);
+        printf("\n\tVenda com ID %d nao encontrada.\n", id);
     }
     else
     {
-        printf("\nvenda com ID %d removida com sucesso.\n", id);
+        printf("\n\tVenda com ID %d removida com sucesso.\n", id);
     }
 }
 
@@ -283,7 +323,7 @@ void buscamatricula_no(noarv *no, char idm[5], int *contador)
     {
         if (*contador == 0)
         {
-            printf("\nID  | Vendedor             | Matrícula | Cliente                | Data         | Valor(R$)\n");
+            printf("\nID  | Vendedor             | Matricula | Cliente                | Data         | Valor(R$)\n");
             printf("---------------------------------------------------------------------------------------------------\n");
         }
 
@@ -292,9 +332,9 @@ void buscamatricula_no(noarv *no, char idm[5], int *contador)
                no->vendas.nomevendedor,
                no->vendas.idvend,
                no->vendas.nomecliente,
-               no->vendas.transacao.dia,
-               no->vendas.transacao.mes,
-               no->vendas.transacao.ano,
+               no->vendas.data.dia,
+               no->vendas.data.mes,
+               no->vendas.data.ano,
                no->vendas.valor);
 
         (*contador)++;
@@ -308,7 +348,7 @@ void buscamatricula(arv* arvore, char idm[5])
 {
     if (arvore == NULL || arvore->raiz == NULL)
     {
-        printf("\narvore vazia\n");
+        printf("\nArvore vazia\n");
         return;
     }
 
@@ -317,7 +357,7 @@ void buscamatricula(arv* arvore, char idm[5])
 
     if (contador == 0)
     {
-        printf("\nnenhuma venda encontrada para a matrícula %s.\n", idm);
+        printf("\nNenhuma venda encontrada para a matricula %s.\n", idm);
     }
 }
 void buscanome_no(noarv *no, char nomevend[50], int *contador)
@@ -331,7 +371,7 @@ void buscanome_no(noarv *no, char nomevend[50], int *contador)
     {
          if (*contador == 0)
         {
-            printf("\nID  | Vendedor             | Matrícula | Cliente                | Data         | Valor(R$)\n");
+            printf("\nID  | Vendedor             | Matricula | Cliente                | Data         | Valor(R$)\n");
             printf("---------------------------------------------------------------------------------------------------\n");
         }
 
@@ -340,9 +380,9 @@ void buscanome_no(noarv *no, char nomevend[50], int *contador)
                no->vendas.nomevendedor,
                no->vendas.idvend,
                no->vendas.nomecliente,
-               no->vendas.transacao.dia,
-               no->vendas.transacao.mes,
-               no->vendas.transacao.ano,
+               no->vendas.data.dia,
+               no->vendas.data.mes,
+               no->vendas.data.ano,
                no->vendas.valor);
 
         (*contador)++;
@@ -354,14 +394,14 @@ void buscanome(arv* arvore, char nomevend[50])
 {
     if(arvore == NULL || arvore -> raiz == NULL)
     {
-        printf("\narvore vazia\n");
+        printf("\nArvore vazia\n");
         return;
     }
     int contador = 0;
     buscanome_no(arvore -> raiz, nomevend, &contador);
     if (contador == 0)
     {
-        printf("\nnenhuma venda encontrada para o vendedor %s.\n", nomevend);
+        printf("\nNenhuma venda encontrada para o vendedor %s.\n", nomevend);
     }
 
 }
@@ -369,13 +409,13 @@ void buscanome(arv* arvore, char nomevend[50])
 void busca(arv* recebida)
 {
     int num;
-    printf("\nescolha como buscar sua venda:\n1 - matricula\n2 - nome do vendedor\t");
+    printf("\n\tEscolha como buscar sua venda:\n\t1 - Matricula\n\t2 - Nome do vendedor\n\t");
     scanf("%d",&num);
     switch(num){
         case 1:
         {
             char matricula[5];
-            printf("\ndigite o numero da matricula do vendedor:\t");
+            printf("\n\tDigite o numero da matricula do vendedor:\t");
             scanf("%4s",matricula);
             buscamatricula(recebida, matricula);
             break;
@@ -383,7 +423,7 @@ void busca(arv* recebida)
         case 2:
         {
             char nomevend[50];
-            printf("\ndigite o nome do vendedor:\t");
+            printf("\nDigite o nome do vendedor:\t");
             lerstring(nomevend);
             buscanome(recebida, nomevend);
             break;
@@ -415,14 +455,207 @@ void exibirestatisticas(arv *arvore)
 {
     if(arvore == NULL || arvore -> raiz == NULL)
     {
-        printf("\narvore vazia\n");
+        printf("\nArvore vazia\n");
         return;
     }
 
-    printf("\n====== ESTATÍSTICAS ======\n");
-    printf("Total de vendas:\t%d\n",contarvendas(arvore -> raiz));
-    printf("Faturamento total:\t%.2f\n", somarfaturamento(arvore -> raiz));
+    printf("\n\t====== ESTATISTICAS ======");
+    printf("\n\n\tTotal de vendas:\t%d",contarvendas(arvore -> raiz));
+    printf("\n\tFaturamento total:\t%.2f", somarfaturamento(arvore -> raiz));
 
+}
+
+void listarporvalor_no(noarv *no, float valor_ref, int op, int *buscavenda)
+{
+    if (no == NULL)
+    {
+        return;
+    }
+    listarporvalor_no(no->esq, valor_ref, op, buscavenda);
+    if ((op == 1 && no -> vendas.valor > valor_ref) || (op == 2 && no->vendas.valor < valor_ref))
+    {
+        if (*buscavenda == 0)
+        {
+            printf("\nID  | Vendedor             | Matrícula | Cliente                | Data         | Valor(R$)\n");
+            printf("---------------------------------------------------------------------------------------------------\n");
+            *buscavenda = 1;
+        }
+        printf("%-3d | %-20s | %-9s | %-20s | %02d/%02d/%04d | %.2f\n",
+               no->vendas.id,
+               no->vendas.nomevendedor,
+               no->vendas.idvend,
+               no->vendas.nomecliente,
+               no->vendas.data.dia,
+               no->vendas.data.mes,
+               no->vendas.data.ano,
+               no->vendas.valor);
+    }
+    listarporvalor_no(no->dir, valor_ref, op, buscavenda);
+}
+
+void listarporvalor(arv *arvore)
+{
+    if (arvore == NULL || arvore->raiz == NULL)
+    {
+        printf("\nArvore vazia\n");
+        return;
+    }
+
+    float valor;
+    int op;
+    int buscavenda = 0;
+
+    printf("\n\tDigite o valor de referencia: ");
+    scanf("%f", &valor);
+
+    printf("\n\t1 - Listar vendas acima desse valor");
+    printf("\n\t2 - Listar vendas abaixo desse valor\n\t");
+    scanf("%d", &op);
+
+    if(op != 1 && op != 2)
+    {
+        printf("\n\tOpcao invalida.\n");
+        return;
+    }
+
+    listarporvalor_no(arvore->raiz, valor, op, &buscavenda);
+
+    if (buscavenda == 0)
+    {
+        if (op == 1)
+            printf("\n\tNenhuma venda com valor acima de %.2f.\n", valor);
+        else
+            printf("\n\tNenhuma venda com valor abaixo de %.2f.\n", valor);
+    }
+}
+
+int contar_nos(noarv *no)
+{
+    if (no == NULL)
+        return 0;
+
+    return 1 + contar_nos(no -> esq) + contar_nos(no -> dir);
+}
+
+void preencher_vetor(noarv *no, vend vet[], int *i)
+{
+    if (no == NULL)
+    {
+        return;
+    }
+    preencher_vetor(no -> esq, vet, i);
+    vet[*i] = no -> vendas;
+    (*i)++;
+    preencher_vetor(no -> dir, vet, i);
+}
+
+void ordenar_por_id_crescente(vend vet[], int n)
+{
+    int i, j;
+    for (i = 0; i < n - 1; i++)
+    {
+        for (j = 0; j < n - 1 - i; j++)
+        {
+            if (vet[j].id > vet[j+1].id)
+            {
+                vend tmp = vet[j];
+                vet[j] = vet[j+1];
+                vet[j+1] = tmp;
+            }
+        }
+    }
+}
+
+void listartodas(arv *arvore)
+{
+    if (arvore == NULL || arvore->raiz == NULL)
+    {
+        printf("\n\tArvore vazia\n");
+        {
+            return;
+        }
+    }
+    int op;
+    printf("\n\tEscolha a ordem que sera listada\n");
+    printf("\n\t1 - Crescente por ID\n");
+    printf("\n\t2 - Decrescente por ID\n\t");
+    scanf("%d", &op);
+    if (op != 1 && op != 2)
+    {
+        printf("\n\tOpcao invalida.\n");
+        return;
+    }
+    int total = contar_nos(arvore->raiz);
+    if (total <= 0)
+    {
+        printf("\n\tNenhuma venda cadastrada.\n");
+        return;
+    }
+    vend *vet = (vend*) malloc(total * sizeof(vend));
+    if (vet == NULL)
+    {
+        printf("\n\tArvore vazia\n");
+        return;
+    }
+    int i = 0;
+    preencher_vetor(arvore -> raiz, vet, &i);
+    ordenar_por_id_crescente(vet, total);
+    printf("\nID  | Vendedor             | Matrícula | Cliente                | Data         | Valor(R$)\n");
+    printf("---------------------------------------------------------------------------------------------------\n");
+    if (op == 1)
+    {
+        for (i = 0; i < total; i++)
+        {
+            printf("%-3d | %-20s | %-9s | %-20s | %02d/%02d/%04d | %.2f\n",
+                   vet[i].id,
+                   vet[i].nomevendedor,
+                   vet[i].idvend,
+                   vet[i].nomecliente,
+                   vet[i].data.dia,
+                   vet[i].data.mes,
+                   vet[i].data.ano,
+                   vet[i].valor);
+        }
+    }
+    else
+    {
+        for (i = total - 1; i >= 0; i--)
+        {
+            printf("%-3d | %-20s | %-9s | %-20s | %02d/%02d/%04d | %.2f\n",
+                   vet[i].id,
+                   vet[i].nomevendedor,
+                   vet[i].idvend,
+                   vet[i].nomecliente,
+                   vet[i].data.dia,
+                   vet[i].data.mes,
+                   vet[i].data.ano,
+                   vet[i].valor);
+        }
+    }
+    free(vet);
+}
+
+
+void liberar_no(noarv *no)
+{
+    if(no == NULL)
+    {
+        return;
+    }
+    liberar_no(no -> esq);
+    liberar_no(no -> dir);
+    free(no);
+}
+
+void finalizar(arv *arvore)
+{
+    if(arvore == NULL)
+    {
+        return;
+    }
+    liberar_no(arvore -> raiz);
+    free(arvore);
+    printf("\n\tSistema finalizado com sucesso");
 }
 
 
